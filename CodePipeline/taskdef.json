@@ -1,0 +1,24 @@
+{
+    "family": "<FAMILY>",
+    "networkMode": "<NETWORK MODE, e.g. awsvpc>",
+    "containerDefinitions": [
+        {
+            "name": "<CONTAINER NAME>",
+            "image": "<IMAGE_NAME>",
+            "portMappings": [
+                {
+                    "containerPort": "<CONTAINER PORT, e.g.80>",
+                    "hostPort": "<HOST PORT, e.g.80. HAS TO BE THE SAME VALUE AS containerPort IF networkMode is awsvpc",
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "<ECS EXECUTION ROLE ARN>"
+}
