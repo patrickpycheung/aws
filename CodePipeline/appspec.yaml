@@ -1,9 +1,0 @@
-version: 0.0
-Resources:
-  - TargetService:
-      Type: AWS::ECS::Service
-      Properties:
-        TaskDefinition: "<TASK_DEFINITION. THIS VALUE WILL BE UPDATED BY CODEPIPELINE, BASED ON THE VALUE FROM taskdef.json>"
-        LoadBalancerInfo:
-          ContainerName: "<CONTAINER NAME>"
-          ContainerPort: "<CONTAINER PORT, e.g.80>"
