@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create CodeBuild project
+
+Parameters: 
+  CodeBuildProjectName:
+    Description: CodeBuild project name
+    Type: String
+
+  GitHubApplicationRepoURL:
+    Description: GitHub repository URL of the application
+    Type: String
+
+Resources:
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodeBuildServiceRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /service-role/
+      Policies:
+        -
+          PolicyName: CodeBuildAccessPolicies
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/SecretsManagerReadWrite
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref CodeBuildProjectName
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: no_artifacts
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        PrivilegedMode: true
+      Source:
+        Auth:
+          Type: OAUTH
+        Location: !Ref GitHubApplicationRepoURL
+        Type: GITHUB
+      Triggers:
+        Webhook: true
+      TimeoutInMinutes: 10
