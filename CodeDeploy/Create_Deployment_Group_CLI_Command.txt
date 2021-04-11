@@ -1,0 +1,3 @@
+aws deploy create-deployment-group \
+     --cli-input-json file://Create_Deployment_Group_CLI_Param.json \
+     --region us-east-1

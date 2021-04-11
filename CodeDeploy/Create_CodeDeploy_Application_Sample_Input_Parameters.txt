@@ -1,0 +1,8 @@
+# CodeDeploy application stack template URL
+https://cloudformation-templates-ppyc.s3.amazonaws.com/Create_CodeDeploy_Application.yaml
+
+# CodeDeploy application stack name
+TestCodeDeployApplicationStack
+
+# CodeDeployApplicationName
+TestCodeDeployApplication

@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create CodeDeploy application
+
+Parameters:
+  CodeDeployApplicationName:
+    Description: Name of the codeDeploy application
+    Type: String
+
+Resources:
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodeDeployServiceRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /service-role/
+      ManagedPolicyArns:
+       - arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS
+       - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !Ref CodeDeployApplicationName
+      ComputePlatform: ECS
+
+Outputs:
+  CodeDeployServiceRoleARN:
+    Value: !GetAtt CodeDeployServiceRole.Arn
+    Description: ARN of the CodeDeploy service role 
+
+  CodeDeployApplicationName:
+    Value: !Ref CodeDeployApplicationName
+    Description: Name of the codeDeploy application

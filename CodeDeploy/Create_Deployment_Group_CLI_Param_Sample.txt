@@ -1,0 +1,23 @@
+# applicationName (Name of the CodeDeploy application )
+TestCodeDeployApplication
+
+# deploymentGroupName (Name to be given to this deployment group)
+TestCodeDeployDeploymentGroup
+
+# Name of the first target group
+TargetGroup01
+
+# Name of the second target group
+TargetGroup02
+
+# listenerArns (ARN of the ALB listener)
+arn:aws:elasticloadbalancing:us-east-1:174304792831:listener/app/TestALB/a8cafcec8f307a78/02c89168206f1d21
+
+# serviceRoleArn (ARN of the CodeDeploy service role)
+arn:aws:iam::174304792831:role/service-role/CodeDeployServiceRole
+
+# serviceName (Name of the ECS service)
+PostCodeECSService
+
+# clusterName (Name of the ECS cluster)
+TestECSCluster

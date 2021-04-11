@@ -1,0 +1,12 @@
+{
+    "applicationName": "TestCodeDeployApplication",
+    "deploymentGroupName": "TestCodeDeployDeploymentGroup",
+    "revision": {
+        "revisionType": "S3",
+        "s3Location": {
+            "bucket": "aws-codedeploy-artifact-store-us-east-1-ppyc",
+            "key": "appspec.yaml",
+            "bundleType": "YAML"
+        }
+    }
+}

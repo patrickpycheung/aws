@@ -1,0 +1,8 @@
+# applicationName (Name of the CodeDeploy application )
+TestCodeDeployApplication
+
+# deploymentGroupName (Name to be given to this deployment group)
+TestCodeDeployDeploymentGroup
+
+# bucket (The S3 bucket containing the appspec.yaml)
+aws-codedeploy-artifact-store-us-east-1-ppyc
