@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create ECS cluster, task definition and service, and expose ECS cluster behind an application load balancer
+
+Parameters:
+  TargetGroupStackTemplateURL:
+    Description: Target group stack template URL
+    Type: String
+
+  TargetGroup01Name:
+    Description: Name of the first target group
+    Type: String
+
+  TargetGroup02Name:
+    Description: Name of the second target group
+    Type: String
+
+  VPCId:
+    Description: VPC ID
+    Type: String
+
+  HealthCheckPath:
+    Description: HTTP path to the health check page
+    Type: String
+
+  SecurityGroupName:
+    Description: Name of the security group to be created for the ALB and ECS service
+    Type: String
+
+  ALBName:
+    Description: Name of the ALB
+    Type: String
+
+  Subnets:
+    Description: Subnets where the ECS tasks will run in (please seperate inputs by comma)
+    Type: CommaDelimitedList
+
+  ECSClusterName:
+    Description: Name of the ECS cluster
+    Type: String
+
+  ECSTaskExecutionRoleName:
+    Description: Name of the ECS task execution role
+    Type: String
+
+  ECSTaskDefinitionFamilyName:
+    Description: Name of the family the task definition belongs to
+    Type: String
+
+  ContainerAppName:
+    Description: Name of the container Application
+    Type: String
+
+  ContainerImageURI:
+    Description: URI of the container Image
+    Type: String
+
+  ECSServiceName:
+    Description: Name of the ECS service
+    Type: String
+
+Resources:
+  TargetGroup01Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref TargetGroupStackTemplateURL
+      Parameters:
+        TargetGroupName: !Ref TargetGroup01Name
+        VPCId: !Ref VPCId
+        HealthCheckPath: !Ref HealthCheckPath
+
+  TargetGroup02Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref TargetGroupStackTemplateURL
+      Parameters:
+        TargetGroupName: !Ref TargetGroup02Name
+        VPCId: !Ref VPCId
+        HealthCheckPath: !Ref HealthCheckPath
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for web access
+      GroupName: !Ref SecurityGroupName
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: '::/0'
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIpv6: '::/0'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIpv6: '::/0'
+        - IpProtocol: tcp
+          FromPort: 8443
+          ToPort: 8443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8443
+          ToPort: 8443
+          CidrIpv6: '::/0'
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIpv6: '::/0'
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIpv6: '::/0'
+
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref ALBName
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Subnets: !Ref Subnets
+      Tags:
+        - Key: ALBName
+          Value: !Ref ALBName
+      Type: application
+      IpAddressType: ipv4
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          ForwardConfig:
+            TargetGroups:
+              - TargetGroupArn: !GetAtt TargetGroup01Stack.Outputs.TargetGroupARN
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ECSClusterName
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref ECSTaskExecutionRoleName
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Family: !Ref ECSTaskDefinitionFamilyName
+      ContainerDefinitions:
+        - Name: !Ref ContainerAppName
+          Image: !Ref ContainerImageURI
+          Essential: true
+          PortMappings:
+            - HostPort: 80
+              Protocol: tcp
+              ContainerPort: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: awslogs-ecs
+              awslogs-region: us-east-1
+              awslogs-stream-prefix: !Ref ECSServiceName
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: 256
+      Memory: 512
+
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Ref ECSServiceName
+      Cluster: !Ref ECSCluster
+      DeploymentController: 
+        Type: CODE_DEPLOY
+      DesiredCount: 1
+      HealthCheckGracePeriodSeconds: 300
+      LaunchType: FARGATE
+      LoadBalancers: 
+        - ContainerName: !Ref ContainerAppName
+          ContainerPort: 80
+          TargetGroupArn: !GetAtt TargetGroup01Stack.Outputs.TargetGroupARN
+      NetworkConfiguration:
+        AwsVpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref SecurityGroup
+          Subnets: !Ref Subnets
+      SchedulingStrategy: REPLICA
+      TaskDefinition: !Ref ECSTaskDefinition
+    DependsOn: ALBListener
+
+Outputs:
+  TargetGroup01Name:
+    Value: !Ref TargetGroup01Name
+    Description: Name of the first target group
+
+  TargetGroup02Name:
+    Value: !Ref TargetGroup02Name
+    Description: Name of the second target group
+
+  ALBListenerARN:
+    Value: !Ref ALBListener
+    Description: ARN of the ALB listener 
+
+  ECSClusterName:
+    Value: !Ref ECSClusterName
+    Description: Name of the ECS cluster
+
+  ECSTaskExecutionRoleARN:
+    Value: !GetAtt ECSTaskExecutionRole.Arn
+    Description: ARN of the ECS task execution role
+
+  ECSServiceName:
+    Value: !Ref ECSServiceName
+    Description: Name of the ECS service
+
+  ContainerAppName:
+    Value: !Ref ContainerAppName
+    Description: Name of the container Application
+
+  HealthCheckPageURL:
+    Value: !Sub '${ALB.DNSName}${HealthCheckPath}'

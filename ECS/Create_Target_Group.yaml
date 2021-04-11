@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create target group
+
+Parameters: 
+  TargetGroupName:
+    Description: Name of the target group
+    Type: String
+
+  VPCId:
+    Description: VPC ID
+    Type: String
+
+  HealthCheckPath:
+    Description: HTTP path to the health check page
+    Type: String
+
+Resources:
+  TestTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Ref TargetGroupName
+      Protocol: HTTP
+      Port: 80
+      TargetType: ip
+      VpcId: !Ref VPCId
+      HealthCheckPath: !Ref HealthCheckPath
+
+Outputs:
+  TargetGroupARN:
+    Value: !Ref TestTargetGroup      
+    Description: ARN of the target group

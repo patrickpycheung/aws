@@ -1,0 +1,47 @@
+# ECS cluster stack template URL
+https://cloudformation-templates-ppyc.s3.amazonaws.com/Create_ECS_Cluster.yaml
+
+# ECS cluster stack name
+TestECSClusterStack
+
+# TargetGroupStackTemplateURL
+https://cloudformation-templates-ppyc.s3.amazonaws.com/Create_Target_Group.yaml
+
+# TargetGroup01Name
+TargetGroup01
+
+# TargetGroup02Name
+TargetGroup02
+
+# VPCId
+vpc-b830c6c5
+
+# HealthCheckPath
+/healthcheck.html
+
+# SecurityGroupName
+TestSecurityGroup
+
+# ALBName
+TestALB
+
+# Subnets
+subnet-e80ed48e,subnet-7c3ba772
+
+# ECSClusterName
+TestECSCluster
+
+# ECSTaskExecutionRoleName
+ECSTaskExecutionRole
+
+# ECSTaskDefinitionFamilyName
+test
+
+# ContainerAppName
+PostCode
+
+# ContainerImageURI
+patrick888/postcode:latest
+
+# ECSServiceName
+PostCodeECSService
