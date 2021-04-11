@@ -1,0 +1,269 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create a 3-phase CodePipeline with source, build and deploy stages
+# The first stage involves getting the application source and deployment configuration from GitHub.
+# The second stage involves building the docker image from the application source, and pushing it to the Docker Hub image repository.
+# The final stage involves updating the ECS task definition and creating replacement tasks using blue/green deployment.
+
+Parameters: 
+  CodeBuildProjectStackTemplateURL:
+    Description: CodeBuild project stack template URL
+    Type: String
+
+  CodeBuildProjectName:
+    Description: CodeBuild project name
+    Type: String
+
+  GitHubApplicationRepoURL:
+    Description: GitHub repository URL of the application
+    Type: String
+
+  CodeDeployApplicationName:
+    Description: CodeDeploy application name
+    Type: String
+
+  CodeDeployDeploymentGroupName:
+    Description: CodeDeploy deployment group Name
+    Type: String
+
+  CodePipelineName:
+    Description: CodePipeline name
+    Type: String
+
+  CodePipelineArtifactStoreBucketName:
+    Description: CodePipeline artifact store bucket name
+    Type: String
+
+  GitHubApplicationOwner:
+    Description: GitHub owner of the application repository
+    Type: String
+
+  GitHubApplicationRepo:
+    Description: GitHub repository of the application
+    Type: String
+
+  GitHubApplicationBranch:
+    Description: GitHub branch of the application repository
+    Type: String  
+
+  GitHubCodeDeployConfigOwner:
+    Description: GitHub owner of the CodeDeploy configuration repository
+    Type: String
+
+  GitHubCodeDeployConfigRepo:
+    Description: GitHub repository of the CodeDeploy configuration
+    Type: String
+
+  GitHubCodeDeployConfigBranch:
+    Description: GitHub branch of the CodeDeplpy configuration repository
+    Type: String  
+
+  RegionName:
+    Description: Region name
+    Type: String
+    Default: us-east-1
+
+Resources:
+  CodeBuildProjectStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref CodeBuildProjectStackTemplateURL
+      Parameters:
+        CodeBuildProjectName: !Ref CodeBuildProjectName
+        GitHubApplicationRepoURL: !Ref GitHubApplicationRepoURL
+
+  CodePipelineArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref CodePipelineArtifactStoreBucketName
+
+  CodePipelineArtifactStoreBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref CodePipelineArtifactStoreBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: DenyUnEncryptedObjectUploads
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:PutObject'
+            Resource: !Join 
+              - ''
+              - - !GetAtt 
+                  - CodePipelineArtifactStoreBucket
+                  - Arn
+                - /*
+            Condition:
+              StringNotEquals:
+                's3:x-amz-server-side-encryption': 'aws:kms'
+          - Sid: DenyInsecureConnections
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: !Join 
+              - ''
+              - - !GetAtt 
+                  - CodePipelineArtifactStoreBucket
+                  - Arn
+                - /*
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+
+  CodePipelineServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: AWS-CodePipeline-Service-3
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'codecommit:CancelUploadArchive'
+                  - 'codecommit:GetBranch'
+                  - 'codecommit:GetCommit'
+                  - 'codecommit:GetUploadArchiveStatus'
+                  - 'codecommit:UploadArchive'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'codedeploy:CreateDeployment'
+                  - 'codedeploy:GetApplication'
+                  - 'codedeploy:GetApplicationRevision'
+                  - 'codedeploy:GetDeployment'
+                  - 'codedeploy:GetDeploymentConfig'
+                  - 'codedeploy:RegisterApplicationRevision'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'codebuild:BatchGetBuilds'
+                  - 'codebuild:StartBuild'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'devicefarm:ListProjects'
+                  - 'devicefarm:ListDevicePools'
+                  - 'devicefarm:GetRun'
+                  - 'devicefarm:GetUpload'
+                  - 'devicefarm:CreateUpload'
+                  - 'devicefarm:ScheduleRun'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                  - 'lambda:ListFunctions'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'elasticbeanstalk:*'
+                  - 'ec2:*'
+                  - 'elasticloadbalancing:*'
+                  - 'autoscaling:*'
+                  - 'cloudwatch:*'
+                  - 's3:*'
+                  - 'sns:*'
+                  - 'cloudformation:*'
+                  - 'rds:*'
+                  - 'sqs:*'
+                  - 'ecs:*'
+                Resource: '*'
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Ref CodePipelineName
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactStoreBucketName
+      RestartExecutionOnUpdate: true
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      Stages:
+      - Name: Source
+        Actions:
+        - Name: Source
+          InputArtifacts: []
+          ActionTypeId:
+            Category: Source
+            Owner: ThirdParty
+            Version: 1
+            Provider: GitHub
+          OutputArtifacts:
+          - Name: SourceArtifact
+          Configuration:
+            Owner: !Ref GitHubApplicationOwner
+            Repo: !Ref GitHubApplicationRepo
+            Branch: !Ref GitHubApplicationBranch
+            PollForSourceChanges: false
+            OAuthToken: '{{resolve:secretsmanager:github:SecretString:token}}'
+          RunOrder: 1
+        - Name: GetCodeDeployConfig
+          InputArtifacts: []
+          ActionTypeId:
+            Category: Source
+            Owner: ThirdParty
+            Version: 1
+            Provider: GitHub
+          OutputArtifacts:
+          - Name: CodeDeployConfigArtifact
+          Configuration:
+            Owner: !Ref GitHubCodeDeployConfigOwner
+            Repo: !Ref GitHubCodeDeployConfigRepo
+            Branch: !Ref GitHubCodeDeployConfigBranch
+            PollForSourceChanges: false
+            OAuthToken: '{{resolve:secretsmanager:github:SecretString:token}}'
+          RunOrder: 1
+
+      - Name: Build
+        Actions:
+        - Name: Build
+          ActionTypeId:
+            Category: Build
+            Owner: AWS
+            Provider: CodeBuild
+            Version: '1'
+          InputArtifacts:
+          - Name: SourceArtifact
+          OutputArtifacts:
+          - Name: BuildArtifact
+          Configuration: 
+            ProjectName: !Ref CodeBuildProjectName
+          RunOrder: 2
+
+      - Name: Deploy
+        Actions:
+        - Name: Deploy
+          ActionTypeId:
+            Category: Deploy
+            Owner: AWS
+            Provider: CodeDeployToECS
+            Version: '1'
+          InputArtifacts:
+          - Name: BuildArtifact
+          - Name: CodeDeployConfigArtifact
+          OutputArtifacts: []
+          Configuration:
+            ApplicationName: !Ref CodeDeployApplicationName
+            DeploymentGroupName: !Ref CodeDeployDeploymentGroupName
+            AppSpecTemplateArtifact: CodeDeployConfigArtifact
+            AppSpecTemplatePath: appspec.yaml
+            TaskDefinitionTemplateArtifact: CodeDeployConfigArtifact
+            TaskDefinitionTemplatePath: taskdef.json
+            Image1ArtifactName: BuildArtifact
+            Image1ContainerName: IMAGE
+          Region: !Ref RegionName
+          Namespace: DeployVariables
+          RunOrder: 3

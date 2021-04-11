@@ -1,0 +1,48 @@
+
+# CodePipeline stack template URL
+https://cloudformation-templates-ppyc.s3.amazonaws.com/Create_CodePipeline.yaml
+
+# CodePipeline stack name
+TestCodePipelineStack
+
+# CodeBuildProjectStackTemplateURL
+https://cloudformation-templates-ppyc.s3.amazonaws.com/Create_CodeBuild_Project.yaml
+
+# CodeBuildProjectName
+TestCodeBuildProject
+
+# GitHubApplicationRepoURL
+https://github.com/patrickpycheung/postcode.git
+
+# CodeDeployApplicationName
+TestCodeDeployApplication
+
+# CodeDeployDeploymentGroupName
+TestCodeDeployDeploymentGroup
+
+# CodePipelineName
+TestCodePipeline
+
+# CodePipelineArtifactStoreBucketName
+codepipeline-us-east-1-artifact-store-ppyc
+
+# GitHubApplicationOwner
+patrickpycheung
+
+# GitHubApplicationRepo
+postcode
+
+# GitHubApplicationBranch
+main
+
+# GitHubCodeDeployConfigOwner
+patrickpycheung
+
+# GitHubCodeDeployConfigRepo
+postcode-codedeploy-config
+
+# GitHubCodeDeployConfigBranch
+main
+
+# RegionName
+us-east-1
